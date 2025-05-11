@@ -195,6 +195,11 @@ require("http").createServer(async (req, res) => {
                 break;
             }
 
+            case "/ping":
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ alive: true }));
+                break;
+            
             case "/get":
             case "/get/":
                 handleGetImage(req, res);
