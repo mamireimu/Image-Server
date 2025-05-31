@@ -4,13 +4,13 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = JSON.parse(process.env.API_KEY || '[]');
 const imageCache = [];
 const cacheDuration = 10 * 60 * 1000; // 10 minutes
 const IMAGE_PATH = path.join(__dirname, "uploads");
 const SERVER_PORT = 8000;
 
-const AUTO_DELETE = false;
+const AUTO_DELETE = true;
 const AUTO_DELETE_DURATION = 8; // days
 
 if (!fs.existsSync(IMAGE_PATH)) {
@@ -180,7 +180,7 @@ require("http").createServer(async (req, res) => {
             case "/upload":
             case "/upload/": {
                 const apiKey = req.headers.authorization;
-                if (!apiKey || apiKey !== API_KEY) {
+                if (!apiKey || !API_KEY.includes(apiKey)) {
                     res.writeHead(403, { "Content-Type": "application/json" });
                     res.end(JSON.stringify({ error: "Forbidden" }));
                     return;
