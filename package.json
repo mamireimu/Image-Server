@@ -2,12 +2,14 @@
   "name": "image-server",
   "version": "1.0.0",
   "description": "シンプルな自動画像縮小ストレージサーバーです。",
+  "type": "commonjs",
   "keywords": [],
   "author": "pukorufu",
   "dependencies": {
-    "axios": "^0.21.4",
+    "axios": "0.21.4",
     "dotenv": "^16.5.0",
     "multiparty": "^4.2.3",
+    "mysql2-promise": "^0.1.4",
     "sharp": "^0.33.5"
   }
 }

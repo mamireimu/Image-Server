@@ -2,6 +2,8 @@ const axios = require("axios");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
+const { brotliDecompress } = require("zlib");
+const mysql = require('mysql2-promise')();
 require("dotenv").config();
 
 const API_KEY = JSON.parse(process.env.API_KEY || '[]');
@@ -12,6 +14,28 @@ const SERVER_PORT = 8000;
 
 const AUTO_DELETE = true;
 const AUTO_DELETE_DURATION = 8; // days
+
+let trialKeys = [];
+
+if (process.env.TRIAL === 'true') {
+
+    const db = mysql.configure({
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    });
+}    
+
+try {
+  if (process.env.TRIAL_API_KEY?.trim()) {
+    trialKeys = JSON.parse(process.env.TRIAL_API_KEY);
+  }
+} catch (e) {
+  console.error('TRIAL_API_KEY の JSON パースに失敗しました:', e);
+  trialKeys = [];
+}
 
 if (!fs.existsSync(IMAGE_PATH)) {
     fs.mkdirSync(IMAGE_PATH, { recursive: true });
@@ -180,13 +204,64 @@ require("http").createServer(async (req, res) => {
             case "/upload":
             case "/upload/": {
                 const apiKey = req.headers.authorization;
-                if (!apiKey || !API_KEY.includes(apiKey)) {
+
+                if (!apiKey || !(API_KEY.includes(apiKey) || trialKeys.includes(apiKey))) {
                     res.writeHead(403, { "Content-Type": "application/json" });
                     res.end(JSON.stringify({ error: "Forbidden" }));
                     return;
                 }
 
                 if (req.method === "POST") {
+
+                    if (process.env.TRIAL === 'true') {
+                        const today = new Date().toISOString().slice(0, 10);
+                        const limit = parseInt(process.env.TRIAL_DAILY_LIMIT || '50', 10);
+
+                        if (trialKeys.includes(apiKey)){
+
+                            try {
+                            // 1. 今日の日付があるか確認
+                            const [existing] = await mysql.execute(
+                                'SELECT usage_count FROM trial_usage WHERE usage_date = ?',
+                                [today]
+                            );
+                        
+                            // 2-1. 無ければ日付を追加（初期値0）
+                            if (existing.length === 0) {
+                                await mysql.execute(
+                                'INSERT INTO trial_usage (usage_date, usage_count) VALUES (?, 0)',
+                                [today]
+                                );
+                            }
+                        
+                            // 3. 現在の使用数を確認する
+                            const [usage] = await mysql.execute(
+                                'SELECT usage_count FROM trial_usage WHERE usage_date = ?',
+                                [today]
+                            );
+                            const current = usage[0]?.usage_count || 0;
+                        
+                            // 4. 使用数とリミット数を比較する
+                            if (current >= limit) {
+                                // 5-1. リミット数に達していればエラー
+                                sendError(res, 429, "Trial daily limit exceeded");
+                                return ;
+                            }
+                        
+                            // 6. カウント1増やす
+                            await mysql.execute(
+                                'UPDATE trial_usage SET usage_count = usage_count + 1 WHERE usage_date = ?',
+                                [today]
+                            );
+                        
+                            } catch (err) {
+                            console.error('トライアル制限処理エラー:', err);
+                            sendError(res, 500, "Internal Server Error (trial)");
+                            }
+
+                        }
+                    }
+
                     handleUploadImage(req, res);
                 } else {
                     res.writeHead(405, { "Content-Type": "application/json" });

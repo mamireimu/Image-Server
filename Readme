@@ -1,0 +1,29 @@
+# Image-Server
+
+画像を一時的に共有するための軽量なサーバーアプリケーションです。JPEG / PNG / WEBP に対応し、画像は自動的に8日後に削除されます。
+
+## 主な機能
+
+- **画像のアップロード・閲覧**
+  - JPEG / PNG / WEBP 形式に対応
+  - アップロードされた画像は一意のURLで即時共有可能
+  - アップロードされた画像は8日後に自動削除
+
+- **自動リサイズ**
+  - 幅または高さが 2024px を超える画像は、自動的に縮小され保存されます
+
+- **APIキーによるアクセス制御**
+  - 複数APIキーを発行
+
+- **トライアルAPI機能**
+  - `TRIAL=true` の環境下で有効化
+  - トライアルAPIキーの使用回数を日別に制限し、自動カウント
+  - MySQLを使用した日次の使用回数管理に対応
+
+TRIAL DB構造
+```
+CREATE TABLE trial_usage (
+  usage_date DATE PRIMARY KEY,
+  usage_count INT NOT NULL DEFAULT 0
+);
+```
