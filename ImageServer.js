@@ -181,14 +181,13 @@ require("http").createServer(async (req, res) => {
             case "/upload":
             case "/upload/": {
                 const apiKey = req.headers.authorization;
-                if (!apiKey || !(apiKey == API_KEY || trialKeys == API_KEY) ) {
+                if (!apiKey || !(API_KEY.includes(apiKey) || trialKeys.includes(apiKey))) {
                     Logger(`Unauthorized access attempt from ${ip}`);
                     sendError(res, 403, "Forbidden");
                     return;
                 }
 
                 if (req.method === "POST") {
-
                     if (process.env.TRIAL === 'true') {
                         const today = new Date().toISOString().slice(0, 10);
                         const limit = parseInt(process.env.TRIAL_DAILY_LIMIT || '50', 10);
@@ -237,7 +236,6 @@ require("http").createServer(async (req, res) => {
 
                         }
                     }
-
                     handleUploadImage(req, res);
                 } else {
                     sendError(res, 405, "Method not allowed");
