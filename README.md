@@ -1,0 +1,15 @@
+# Image Server
+このサーバーコードは、`puk06/PicDrop`を使用した画像アップロードに使用できるサーバーを立てるためのコードです。
+
+# 初回起動手順
+1. `.env`ファイルを作成し、APIキーを作って入力する。
+2. `npm i`でライブラリをインストール
+3. `node ImageServer.js`で起動
+
+# 通常時の起動手順
+1. `node ImageServer.js`で起動するだけです。
+
+# ライセンス
+ライブラリのライセンスは[THIRD_PARTY_LICENSES](https://github.com/puk06/Image-Server/blob/main/THIRD_PARTY_LICENSES)を御覧ください
+
+サーバーコードのライセンスは[LICENSE](https://github.com/puk06/Image-Server/blob/main/LICENSE)を御覧ください
