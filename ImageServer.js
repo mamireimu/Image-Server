@@ -183,6 +183,18 @@ function handleGetImage(req, res, logger) {
 }
 
 require("http").createServer(async (req, res) => {
+    // CORSヘッダーを必ず追加
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+
+    // プリフライト対応
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+    
     try {
         const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
         const Logger = new LogUtils(ip);
