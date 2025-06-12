@@ -10,13 +10,23 @@ const API_KEY = JSON.parse(process.env.API_KEY || '[]');
 const RequestUtils = require("./Utils/RequestUtils");
 const LogUtils = require("./Utils/LogUtils");
 
-const imageCache = [];
-const cacheDuration = 10 * 60 * 1000; // 10 minutes
-const IMAGE_PATH = path.join(__dirname, "uploads");
-const SERVER_PORT = 8000;
 
-const AUTO_DELETE = true;
-const AUTO_DELETE_DURATION = 8; // days
+const SERVER_PORT = parseInt(process.env.SERVER_PORT) || 8000;
+const cacheDuration = process.env.CACHE_DURATION ? parseInt(process.env.CACHE_DURATION) * 60 * 1000 : 10 * 60 * 1000; // Default to 10 minutes
+const IMAGE_PATH = path.join(__dirname, process.env.UPLOAD_DIR_NAME || "uploads");
+const AUTO_DELETE = process.env.AUTO_DELETE === "true";
+const AUTO_DELETE_DURATION = process.env.AUTO_DELETE_DURATION ? parseInt(process.env.AUTO_DELETE_DURATION) : 8; // days
+
+// Config File Console
+LogUtils.serverMessage(`API_KEY: ${API_KEY}`);
+LogUtils.serverMessage(`SERVER_PORT: ${SERVER_PORT}`);
+LogUtils.serverMessage(`CACHE_DURATION: ${cacheDuration / (60 * 1000)} minutes`);
+LogUtils.serverMessage(`IMAGE_PATH: ${IMAGE_PATH}`);
+LogUtils.serverMessage(`AUTO_DELETE: ${AUTO_DELETE}`);
+LogUtils.serverMessage(`AUTO_DELETE_DURATION: ${AUTO_DELETE_DURATION} days`);
+// End of Config File Console
+
+const imageCache = [];
 
 let trialKeys = [];
 
@@ -196,6 +206,16 @@ require("http").createServer(async (req, res) => {
     }
     
     try {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+        
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204);
+            res.end();
+            return;
+        }
+    
         const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
         const Logger = new LogUtils(ip);
 
