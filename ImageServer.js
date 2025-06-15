@@ -16,6 +16,16 @@ const cacheDuration = process.env.CACHE_DURATION ? parseInt(process.env.CACHE_DU
 const IMAGE_PATH = path.join(__dirname, process.env.UPLOAD_DIR_NAME || "uploads");
 const AUTO_DELETE = process.env.AUTO_DELETE === "true";
 const AUTO_DELETE_DURATION = process.env.AUTO_DELETE_DURATION ? parseInt(process.env.AUTO_DELETE_DURATION) : 8; // days
+const LIMIT_REQUEST = process.env.LIMIT_REQUEST === "true";
+const REQUEST_LIMIT_PER_MINUTE = parseInt(process.env.REQUEST_LIMIT_PER_MINUTE) || 60; // Default to 60 requests per minute
+let BYPASS_IP = [];
+
+const IP_FILE_PATH = path.join(__dirname, "bypass_ips.txt");
+if (!fs.existsSync(IP_FILE_PATH)) {
+    fs.writeFileSync(IP_FILE_PATH, "", "utf-8");
+} else {
+    BYPASS_IP = fs.readFileSync(IP_FILE_PATH, "utf-8").split("\n").map(ip => ip.trim());
+}
 
 // Config File Console
 LogUtils.serverMessage(`API_KEY: ${API_KEY}`);
@@ -24,9 +34,12 @@ LogUtils.serverMessage(`CACHE_DURATION: ${cacheDuration / (60 * 1000)} minutes`)
 LogUtils.serverMessage(`IMAGE_PATH: ${IMAGE_PATH}`);
 LogUtils.serverMessage(`AUTO_DELETE: ${AUTO_DELETE}`);
 LogUtils.serverMessage(`AUTO_DELETE_DURATION: ${AUTO_DELETE_DURATION} days`);
+LogUtils.serverMessage(`LIMIT_REQUEST: ${LIMIT_REQUEST}`);
+LogUtils.serverMessage(`REQUEST_LIMIT_PER_MINUTE: ${REQUEST_LIMIT_PER_MINUTE}`);
 // End of Config File Console
 
 const imageCache = [];
+const requestCounts = {};
 
 let trialKeys = [];
 
@@ -219,10 +232,23 @@ require("http").createServer(async (req, res) => {
         const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
         const Logger = new LogUtils(ip);
 
-        if (!ip) {
-            Logger.log("IP address not found");
-            RequestUtils.sendError(res, 400, "IP address not found");
-            return;
+        // Rate limiting
+        const currentTime = Date.now();
+
+        if (LIMIT_REQUEST && !BYPASS_IP.includes(ip)) {
+
+            if (!requestCounts[ip]) {
+                requestCounts[ip] = [];
+            }
+
+            requestCounts[ip].push(currentTime);
+            requestCounts[ip] = requestCounts[ip].filter(timestamp => currentTime - timestamp < 60 * 1000);
+
+            if (requestCounts[ip].length > REQUEST_LIMIT_PER_MINUTE) {
+                Logger.log(`Rate limit exceeded for IP: ${ip}`);
+                RequestUtils.sendError(res, 429, "Too many requests");
+                return;
+            }
         }
 
         const urlParts = req.url.split("?");
